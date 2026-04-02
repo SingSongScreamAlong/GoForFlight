@@ -91,6 +91,22 @@ export class ActiveMissionScreen implements Screen {
       return;
     }
 
+    // ── Controller seat click ─────────────────────────────────
+    const seatEl = target.closest('[data-controller-id]') as HTMLElement;
+    if (seatEl) {
+      const ctrlId = seatEl.getAttribute('data-controller-id')!;
+      this.deps.uiState.selectController(ctrlId);
+      return;
+    }
+
+    // ── FD Console tab switch ─────────────────────────────────
+    const tabEl = target.closest('[data-fd-tab]') as HTMLElement;
+    if (tabEl) {
+      const tab = tabEl.getAttribute('data-fd-tab') as any;
+      this.deps.uiState.setFDConsoleTab(tab);
+      return;
+    }
+
     // ── Subsystem drill-down ──────────────────────────────────
     const sysCard = target.closest('[data-subsystem]') as HTMLElement;
     if (sysCard) {
@@ -151,11 +167,12 @@ export class ActiveMissionScreen implements Screen {
 
       case 'Escape':
         e.preventDefault();
-        if (this.deps.uiState.getActivePanel() !== 'wall') {
+        if (this.deps.uiState.getFloorViewMode() === 'controller_detail') {
+          this.deps.uiState.deselectController();
+        } else if (this.deps.uiState.getActivePanel() !== 'wall') {
           this.deps.uiState.navigateTo('wall');
         } else {
           this.deps.time.pause();
-          // Could show pause menu here
         }
         break;
 

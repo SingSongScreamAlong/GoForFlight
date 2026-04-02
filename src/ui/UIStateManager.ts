@@ -1,52 +1,32 @@
 /**
  * UI State Manager — controls panel focus, navigation, drill-down,
- * context-sensitive highlighting, and alert-linked navigation.
+ * controller selection, and alert-linked navigation.
  */
 
 import { EventBus } from '../core/EventBus.js';
 import { Subsystem, Severity } from '../types/common.js';
 
 export type UIPanel =
-  | 'wall'              // main wall overview
-  | 'workstation'       // workstation detail view
-  | 'subsystem'         // subsystem deep-dive
-  | 'procedures'        // procedure/checklist view
-  | 'alerts'            // alert queue
-  | 'transcript'        // dialogue transcript
-  | 'trajectory'        // trajectory/map
-  | 'timeline'          // mission timeline
-  | 'command'           // command console
-  | 'crew'              // crew status
-  | 'debrief';          // post-mission debrief
+  | 'wall'
+  | 'subsystem'
+  | 'procedures'
+  | 'alerts'
+  | 'transcript'
+  | 'command';
+
+export type FloorViewMode = 'room' | 'controller_detail';
 
 export interface UIState {
   activePanel: UIPanel;
   previousPanels: UIPanel[];
   selectedSubsystem: Subsystem | null;
+  selectedControllerId: string | null;
+  floorViewMode: FloorViewMode;
   selectedAlertId: string | null;
   selectedProcedureId: string | null;
   highlightedParameters: Set<string>;
-  contextInfo: string | null;
-  wallLayout: WallLayoutConfig;
+  fdConsoleTab: 'alerts' | 'commands' | 'procedures' | 'transcript';
 }
-
-export interface WallLayoutConfig {
-  showTrajectory: boolean;
-  showGroundTrack: boolean;
-  showSystemCards: boolean;
-  showEventLog: boolean;
-  showAlertOverlay: boolean;
-  showMETBar: boolean;
-}
-
-const DEFAULT_WALL_LAYOUT: WallLayoutConfig = {
-  showTrajectory: true,
-  showGroundTrack: true,
-  showSystemCards: true,
-  showEventLog: true,
-  showAlertOverlay: true,
-  showMETBar: true,
-};
 
 export class UIStateManager {
   private eventBus: EventBus;
@@ -59,14 +39,14 @@ export class UIStateManager {
       activePanel: 'wall',
       previousPanels: [],
       selectedSubsystem: null,
+      selectedControllerId: null,
+      floorViewMode: 'room',
       selectedAlertId: null,
       selectedProcedureId: null,
       highlightedParameters: new Set(),
-      contextInfo: null,
-      wallLayout: { ...DEFAULT_WALL_LAYOUT },
+      fdConsoleTab: 'alerts',
     };
 
-    // Alert-linked navigation: clicking critical alert focuses its subsystem
     this.eventBus.on('alert:created', (p) => {
       if (p.severity === Severity.Critical) {
         this.highlightSubsystem(p.subsystem);
@@ -74,7 +54,6 @@ export class UIStateManager {
     });
   }
 
-  /** Navigate to a panel. */
   navigateTo(panel: UIPanel): void {
     if (this.state.activePanel !== panel) {
       this.state.previousPanels.push(this.state.activePanel);
@@ -83,65 +62,72 @@ export class UIStateManager {
     this.state.activePanel = panel;
   }
 
-  /** Go back to previous panel. */
   goBack(): void {
-    const prev = this.state.previousPanels.pop();
-    if (prev) {
-      this.state.activePanel = prev;
+    if (this.state.floorViewMode === 'controller_detail') {
+      this.deselectController();
+      return;
     }
+    const prev = this.state.previousPanels.pop();
+    if (prev) this.state.activePanel = prev;
   }
 
-  /** Drill into a specific subsystem. */
   drillIntoSubsystem(subsystem: Subsystem): void {
     this.state.selectedSubsystem = subsystem;
     this.navigateTo('subsystem');
   }
 
-  /** Focus on an alert. */
+  /** Select a controller seat — opens detail panel in the floor. */
+  selectController(controllerId: string): void {
+    this.state.selectedControllerId = controllerId;
+    this.state.floorViewMode = 'controller_detail';
+  }
+
+  /** Deselect controller — return to room view. */
+  deselectController(): void {
+    this.state.selectedControllerId = null;
+    this.state.floorViewMode = 'room';
+  }
+
+  setFDConsoleTab(tab: UIState['fdConsoleTab']): void {
+    this.state.fdConsoleTab = tab;
+  }
+
   focusAlert(alertId: string): void {
     this.state.selectedAlertId = alertId;
-    this.navigateTo('alerts');
+    this.state.fdConsoleTab = 'alerts';
   }
 
-  /** Focus on a procedure. */
   focusProcedure(procedureId: string): void {
     this.state.selectedProcedureId = procedureId;
-    this.navigateTo('procedures');
+    this.state.fdConsoleTab = 'procedures';
   }
 
-  /** Highlight a subsystem (for alert-linked focus). */
   highlightSubsystem(subsystem: Subsystem): void {
     this.state.selectedSubsystem = subsystem;
   }
 
-  /** Highlight specific parameters (for trend/anomaly focus). */
   highlightParameters(params: string[]): void {
     this.state.highlightedParameters = new Set(params);
   }
 
-  /** Clear highlights. */
   clearHighlights(): void {
     this.state.highlightedParameters.clear();
     this.state.selectedSubsystem = null;
   }
 
-  /** Set context info (shown in context panel). */
-  setContextInfo(info: string | null): void {
-    this.state.contextInfo = info;
-  }
-
-  /** Update wall layout config. */
-  setWallLayout(partial: Partial<WallLayoutConfig>): void {
-    Object.assign(this.state.wallLayout, partial);
-  }
-
-  /** Get current UI state. */
   getState(): Readonly<UIState> {
     return this.state;
   }
 
-  /** Get active panel. */
   getActivePanel(): UIPanel {
     return this.state.activePanel;
+  }
+
+  getFloorViewMode(): FloorViewMode {
+    return this.state.floorViewMode;
+  }
+
+  getSelectedControllerId(): string | null {
+    return this.state.selectedControllerId;
   }
 }
