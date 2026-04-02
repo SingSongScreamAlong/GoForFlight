@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GO FOR FLIGHT</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0f;
+      color: #00ff88;
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #app {
+      text-align: center;
+      padding: 2rem;
+    }
+    h1 {
+      font-size: 2.5rem;
+      letter-spacing: 0.3em;
+      margin-bottom: 1rem;
+      color: #00ff88;
+      text-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+    }
+    .subtitle {
+      color: #667;
+      font-size: 0.9rem;
+      margin-bottom: 2rem;
+    }
+    .status {
+      color: #ff0;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>GO FOR FLIGHT</h1>
+    <p class="subtitle">MISSION CONTROL SIMULATION</p>
+    <p class="status">ENGINE INITIALIZING...</p>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
