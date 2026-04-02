@@ -108,27 +108,91 @@ export class WorkstationUI {
   private renderProcedures(): string {
     const active = this.deps.procedures.getActive();
 
-    if (active.length === 0) {
-      return '<div style="color:var(--text-dim);font-size:11px;padding:8px;">NO ACTIVE PROCEDURES</div>';
+    // Show active procedures with interactive steps
+    let html = '';
+
+    if (active.length > 0) {
+      html += active.map(({ definition, state }) => {
+        const steps = this.deps.procedures.getStepStatuses(definition.id);
+        const currentStep = this.deps.procedures.getCurrentStep(definition.id);
+
+        return `
+          <div style="margin-bottom:12px;">
+            <div class="gff-section-header">${definition.name} [${definition.category.toUpperCase()}]</div>
+            ${steps.map(({ step, status }) => {
+              let actions = '';
+              if (status === 'current') {
+                // Show action buttons for the current step
+                actions = `<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;">`;
+                if (step.branches && step.branches.length > 0) {
+                  // Branch selection
+                  actions += step.branches.map(b =>
+                    `<button class="gff-cmd-btn" data-proc-branch="${definition.id}" data-branch-label="${b.label}"
+                             style="font-size:9px;padding:3px 8px;">${b.label}</button>`
+                  ).join('');
+                } else {
+                  // Normal complete/skip
+                  actions += `<button class="gff-cmd-btn" data-proc-complete="${definition.id}"
+                               style="font-size:9px;padding:3px 8px;border-color:var(--green);color:var(--green);">
+                    ${step.requiresConfirmation ? 'CONFIRM' : 'COMPLETE STEP'}
+                  </button>`;
+                  if (!step.requiresConfirmation) {
+                    actions += `<button class="gff-cmd-btn" data-proc-skip="${definition.id}"
+                                 style="font-size:9px;padding:3px 8px;color:var(--text-dim);">SKIP</button>`;
+                  }
+                }
+                actions += `</div>`;
+                // Show explanation if available
+                if (step.explanation) {
+                  actions += `<div style="font-size:9px;color:var(--text-dim);margin-top:4px;font-style:italic;">${step.explanation}</div>`;
+                }
+              }
+              return `
+                <div class="gff-proc-step gff-step-${status}">
+                  <span style="color:var(--text-dim);font-size:9px;">${step.index + 1}.</span>
+                  ${step.instruction}
+                  ${step.warningNote ? `<div style="color:var(--orange);font-size:9px;">⚠ ${step.warningNote}</div>` : ''}
+                  ${actions}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }).join('');
     }
 
-    return active.map(({ definition, state }) => {
-      const steps = this.deps.procedures.getStepStatuses(definition.id);
+    // Show available procedures to start
+    const allProcs = [
+      ...this.deps.procedures.getBySubsystem('propulsion' as any),
+      ...this.deps.procedures.getBySubsystem('power' as any),
+      ...this.deps.procedures.getBySubsystem('thermal' as any),
+      ...this.deps.procedures.getBySubsystem('eclss' as any),
+      ...this.deps.procedures.getBySubsystem('comms' as any),
+      ...this.deps.procedures.getBySubsystem('gnc' as any),
+    ];
+    // Deduplicate and filter out already-active
+    const activeIds = new Set(active.map(a => a.definition.id));
+    const available = allProcs.filter(p => !activeIds.has(p.id));
+    const unique = Array.from(new Map(available.map(p => [p.id, p])).values());
 
-      return `
-        <div style="margin-bottom:12px;">
-          <div class="gff-section-header">${definition.name} [${definition.category.toUpperCase()}]</div>
-          ${steps.map(({ step, status }) => `
-            <div class="gff-proc-step gff-step-${status}">
-              <span style="color:var(--text-dim);font-size:9px;">${step.index + 1}.</span>
-              ${step.instruction}
-              ${status === 'current' && step.requiresConfirmation ? '<span style="color:var(--cyan);"> [CONFIRM]</span>' : ''}
-              ${step.warningNote ? `<div style="color:var(--orange);font-size:9px;">⚠ ${step.warningNote}</div>` : ''}
-            </div>
-          `).join('')}
+    if (unique.length > 0) {
+      html += `<div class="gff-section-header" style="margin-top:8px;">AVAILABLE PROCEDURES</div>`;
+      html += unique.map(proc => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(42,42,58,0.3);">
+          <div>
+            <div style="font-size:10px;color:var(--text-primary);">${proc.name}</div>
+            <div style="font-size:8px;color:var(--text-dim);">${proc.category.toUpperCase()} | ${proc.ownerSubsystem.toUpperCase()}</div>
+          </div>
+          <button class="gff-cmd-btn" data-proc-start="${proc.id}" style="font-size:8px;padding:2px 6px;">RUN</button>
         </div>
-      `;
-    }).join('');
+      `).join('');
+    }
+
+    if (!html) {
+      html = '<div style="color:var(--text-dim);font-size:11px;padding:8px;">NO PROCEDURES AVAILABLE</div>';
+    }
+
+    return html;
   }
 
   private renderTranscript(): string {
