@@ -87,7 +87,7 @@ export class TelemetryPanel {
           range,
           label: gc.label,
           unit: gc.unit,
-          size: 56,
+          size: 48,
           decimals: gc.max <= 1 ? 2 : 0,
         });
       }).join('');

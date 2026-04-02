@@ -350,7 +350,7 @@ const MCC_CSS = `
 
   /* ── Wall ──────────────────────────────────────── */
   .mcc-wall {
-    display: flex; height: 38%;
+    display: flex; height: 45%;
     background: var(--wall-bg);
     border-bottom: 2px solid var(--nasa-blue);
     flex-shrink: 0;
@@ -361,7 +361,7 @@ const MCC_CSS = `
     background: var(--wall-panel-bg);
   }
   .mcc-wall-panel:last-child { border-right: none; }
-  .mcc-wall-center { flex: 1.2; }
+  .mcc-wall-center { flex: 1.3; }
   .mcc-wall-header {
     background: var(--wall-header-bg); color: var(--wall-header-text);
     font-size: 10px; letter-spacing: 2px; padding: 4px 10px;
@@ -419,22 +419,23 @@ const MCC_CSS = `
     flex: 1; display: flex;
     background: var(--floor-bg);
     overflow: hidden;
+    min-height: 0;
   }
   .mcc-room {
-    flex: 1; padding: 16px 24px;
+    flex: 1; padding: 8px 16px;
     display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 10px;
+    align-items: center; justify-content: center; gap: 6px;
   }
   .mcc-room-row {
-    display: flex; gap: 12px; justify-content: center;
+    display: flex; gap: 10px; justify-content: center;
   }
-  .mcc-row-back { transform: scale(0.92); opacity: 0.85; }
-  .mcc-row-middle { transform: scale(0.96); }
+  .mcc-row-back { transform: scale(0.9); opacity: 0.8; }
+  .mcc-row-middle { transform: scale(0.95); opacity: 0.9; }
   .mcc-row-front { transform: scale(1.0); }
 
   /* ── Controller Seats ─────────────────────────── */
   .mcc-controller-seat {
-    width: 140px; background: var(--floor-panel-bg);
+    width: 120px; background: var(--floor-panel-bg);
     border: 1px solid var(--floor-border);
     border-radius: 3px; cursor: pointer;
     transition: all 0.15s;
@@ -486,7 +487,7 @@ const MCC_CSS = `
 
   /* ── FD Console ───────────────────────────────── */
   .mcc-fd-console {
-    width: 300px; flex-shrink: 0;
+    width: 260px; flex-shrink: 0;
     background: #1E293B;
     border-left: 1px solid var(--floor-border);
     display: flex; flex-direction: column;

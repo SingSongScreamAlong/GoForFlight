@@ -31,7 +31,7 @@ export class GroundTrackPanel {
 
     // Continents
     const continents = CONTINENT_PATHS.map(d =>
-      `<path d="${d}" fill="#94A3B8" stroke="#CBD5E1" stroke-width="0.5" opacity="0.6"/>`
+      `<path d="${d}" fill="#64748B" stroke="#94A3B8" stroke-width="0.8" opacity="0.8"/>`
     ).join('');
 
     // Ground track polyline
