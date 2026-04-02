@@ -53,8 +53,14 @@ import { AlertTones } from './audio/AlertTones.js';
 import { RoomAmbience } from './audio/RoomAmbience.js';
 import { VoicePlayback } from './audio/VoicePlayback.js';
 
+// Debug & Difficulty
+import { DebugTools } from './debug/DebugTools.js';
+import { DifficultySystem } from './core/DifficultySystem.js';
+
 // Data
 import { MISSION_01_FIRST_ORBIT } from './data/mission_01_first_orbit.js';
+import { MISSION_01_ANOMALIES } from './data/anomalies_mission_01.js';
+import { MISSION_01_PROCEDURES } from './data/procedures_mission_01.js';
 import { GameState, Subsystem } from './types/common.js';
 
 // ── Bootstrap core ────────────────────────────────────────────────
@@ -157,6 +163,10 @@ const alertTones = new AlertTones(audioEngine, eventBus);
 const roomAmbience = new RoomAmbience(audioEngine, eventBus);
 const voicePlayback = new VoicePlayback(audioEngine, eventBus);
 
+// ── Difficulty ────────────────────────────────────────────────────
+
+const difficulty = new DifficultySystem(eventBus);
+
 // ── UI ────────────────────────────────────────────────────────────
 
 const uiState = new UIStateManager(eventBus);
@@ -196,6 +206,10 @@ gameState.boot();
 async function quickStart() {
   // Load mission
   missionRuntime.loadMission(MISSION_01_FIRST_ORBIT);
+
+  // Register content — anomalies and procedures
+  anomalyDb.registerAll(MISSION_01_ANOMALIES);
+  procedureRunner.registerAll(MISSION_01_PROCEDURES);
 
   // Initialize controllers from roster
   controllers.initFromRoster(MISSION_01_FIRST_ORBIT.controllerRoster);
@@ -269,10 +283,14 @@ async function quickStart() {
     testGo: () => alertTones.playOnce('go'),
     testNoGo: () => alertTones.playOnce('nogo'),
   },
+  // Difficulty
+  difficulty,
   // UI
   uiState, renderer,
   // Data
   missions: { MISSION_01_FIRST_ORBIT },
+  anomalies: MISSION_01_ANOMALIES,
+  procedures: MISSION_01_PROCEDURES,
   // Actions
   quickStart,
   // Helpers
@@ -305,5 +323,20 @@ async function quickStart() {
   },
 };
 
+// ── Debug tools (press ` to toggle overlay) ──────────────────────
+
+const debugTools = new DebugTools({
+  eventBus, time,
+  mission: missionRuntime,
+  simulation,
+  anomalyDirector,
+  alerts: alertEngine,
+  flightRules,
+  controllers,
+});
+
+(window as any).__gff.debug = debugTools;
+
 console.log('GO FOR FLIGHT — All Systems Ready');
 console.log('Run __gff.quickStart() to launch Mission 01');
+console.log('Press ` to toggle debug overlay');
