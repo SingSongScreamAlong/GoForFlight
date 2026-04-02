@@ -47,6 +47,12 @@ import { EventLogger } from './narrative/EventLogger.js';
 import { UIStateManager } from './ui/UIStateManager.js';
 import { Renderer } from './ui/Renderer.js';
 
+// Audio
+import { AudioEngine } from './audio/AudioEngine.js';
+import { AlertTones } from './audio/AlertTones.js';
+import { RoomAmbience } from './audio/RoomAmbience.js';
+import { VoicePlayback } from './audio/VoicePlayback.js';
+
 // Data
 import { MISSION_01_FIRST_ORBIT } from './data/mission_01_first_orbit.js';
 import { GameState, Subsystem } from './types/common.js';
@@ -144,6 +150,13 @@ const briefing = new BriefingSystem();
 const debrief = new DebriefSystem(eventBus);
 const eventLogger = new EventLogger(eventBus);
 
+// ── Audio systems ─────────────────────────────────────────────────
+
+const audioEngine = new AudioEngine(eventBus);
+const alertTones = new AlertTones(audioEngine, eventBus);
+const roomAmbience = new RoomAmbience(audioEngine, eventBus);
+const voicePlayback = new VoicePlayback(audioEngine, eventBus);
+
 // ── UI ────────────────────────────────────────────────────────────
 
 const uiState = new UIStateManager(eventBus);
@@ -180,7 +193,7 @@ gameState.boot();
 
 // ── Quick start helper ────────────────────────────────────────────
 
-function quickStart() {
+async function quickStart() {
   // Load mission
   missionRuntime.loadMission(MISSION_01_FIRST_ORBIT);
 
@@ -193,6 +206,21 @@ function quickStart() {
   // Set anomaly pool
   anomalyDirector.setPool(MISSION_01_FIRST_ORBIT.anomalyPool);
 
+  // Initialize audio (must be called from user gesture context)
+  await audioEngine.init();
+  voicePlayback.initRadioChain();
+
+  // Register distinct voice profiles for each controller
+  voicePlayback.registerVoiceProfile({ controllerId: 'ctrl_booster', rate: 0.95, pitch: 0.85 });   // deeper, steady
+  voicePlayback.registerVoiceProfile({ controllerId: 'ctrl_eecom', rate: 1.0, pitch: 1.1 });       // clear, slightly higher
+  voicePlayback.registerVoiceProfile({ controllerId: 'ctrl_gnc', rate: 1.1, pitch: 0.95 });        // fast, precise
+  voicePlayback.registerVoiceProfile({ controllerId: 'ctrl_electrical', rate: 0.9, pitch: 0.9 });  // calm, low
+  voicePlayback.registerVoiceProfile({ controllerId: 'ctrl_thermal', rate: 1.0, pitch: 1.15 });    // quiet, higher
+  voicePlayback.registerVoiceProfile({ controllerId: 'ctrl_inco', rate: 1.05, pitch: 1.0 });       // quick, neutral
+
+  // Start room ambience
+  roomAmbience.start();
+
   // Transition states
   gameState.transitionTo(GameState.MissionBrief);
   missionRuntime.startMission();
@@ -204,8 +232,10 @@ function quickStart() {
 
   console.log('═══════════════════════════════════════');
   console.log('  GO FOR FLIGHT — Mission 01 Active');
+  console.log('  Audio: ON | Voice: ON | Ambience: ON');
   console.log('═══════════════════════════════════════');
   console.log('Systems accessible via __gff.*');
+  console.log('Audio controls: __gff.audio.*');
 }
 
 // Export for console/debug access
@@ -221,6 +251,24 @@ function quickStart() {
   controllers, dialogue, crewTasks, crewComms,
   // Narrative
   briefing, debrief, eventLogger,
+  // Audio
+  audio: {
+    engine: audioEngine,
+    tones: alertTones,
+    ambience: roomAmbience,
+    voice: voicePlayback,
+    setMasterVolume: (v: number) => audioEngine.setMasterVolume(v),
+    setVoiceVolume: (v: number) => audioEngine.setChannelVolume('voice', v),
+    setAlertVolume: (v: number) => audioEngine.setChannelVolume('alert', v),
+    setAmbienceVolume: (v: number) => audioEngine.setChannelVolume('ambience', v),
+    mute: () => audioEngine.setMasterVolume(0),
+    unmute: () => audioEngine.setMasterVolume(0.8),
+    testCaution: () => alertTones.playOnce('caution'),
+    testWarning: () => alertTones.playOnce('warning'),
+    testCritical: () => alertTones.playOnce('critical'),
+    testGo: () => alertTones.playOnce('go'),
+    testNoGo: () => alertTones.playOnce('nogo'),
+  },
   // UI
   uiState, renderer,
   // Data
