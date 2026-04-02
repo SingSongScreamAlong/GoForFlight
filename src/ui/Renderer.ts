@@ -1,8 +1,8 @@
 /**
  * Main Renderer — NASA MCC-accurate layout.
  *
- * TOP 40%:  The Wall (3 screens: Telemetry | Orbit | Ground Track)
- * BOTTOM 60%: The Floor (controller seats + Flight Director console)
+ * TOP ~45%:  The Wall (Data Panel | Orbit/Spacecraft | Ground Track)
+ * BOTTOM:    The Floor (controller seats + Flight Director console)
  */
 
 import { EventBus } from '../core/EventBus.js';
@@ -15,7 +15,7 @@ import { DialogueSystem } from '../controllers/DialogueSystem.js';
 import { ProcedureRunner } from '../procedures/ProcedureRunner.js';
 import { CommandSystem } from '../commands/CommandSystem.js';
 import { UIStateManager } from './UIStateManager.js';
-import { TelemetryPanel } from './panels/TelemetryPanel.js';
+import { DataPanel } from './panels/DataPanel.js';
 import { OrbitPanel } from './panels/OrbitPanel.js';
 import { GroundTrackPanel } from './panels/GroundTrackPanel.js';
 import { FloorView } from './panels/FloorView.js';
@@ -41,7 +41,7 @@ export class Renderer {
   private animFrameId: number | null = null;
 
   // Panels
-  private telemetryPanel: TelemetryPanel;
+  private dataPanel: DataPanel;
   private orbitPanel: OrbitPanel;
   private groundTrackPanel: GroundTrackPanel;
   private floorView: FloorView;
@@ -64,7 +64,7 @@ export class Renderer {
     this.deps = deps;
     this.root = rootElement;
 
-    this.telemetryPanel = new TelemetryPanel(deps);
+    this.dataPanel = new DataPanel(deps);
     this.orbitPanel = new OrbitPanel(deps);
     this.groundTrackPanel = new GroundTrackPanel(deps);
     this.floorView = new FloorView(deps);
@@ -112,7 +112,7 @@ export class Renderer {
     const wall = document.createElement('div');
     wall.className = 'mcc-wall';
     wall.innerHTML = `
-      <div class="mcc-wall-panel" id="mcc-telemetry"></div>
+      <div class="mcc-wall-panel mcc-wall-data" id="mcc-data"></div>
       <div class="mcc-wall-panel mcc-wall-center" id="mcc-orbit"></div>
       <div class="mcc-wall-panel" id="mcc-groundtrack"></div>
     `;
@@ -139,7 +139,7 @@ export class Renderer {
     this.phaseEl = document.getElementById('mcc-phase');
     this.timeScaleEl = document.getElementById('mcc-timescale');
     this.pauseBtnEl = document.getElementById('mcc-btn-pause');
-    this.telemetryContainer = document.getElementById('mcc-telemetry');
+    this.telemetryContainer = document.getElementById('mcc-data');
     this.orbitContainer = document.getElementById('mcc-orbit');
     this.groundTrackContainer = document.getElementById('mcc-groundtrack');
     this.floorContainer = document.getElementById('mcc-room');
@@ -174,7 +174,7 @@ export class Renderer {
     if (this.pauseBtnEl) this.pauseBtnEl.textContent = this.deps.time.isPaused() ? '▶' : '⏸';
 
     // Wall panels
-    if (this.telemetryContainer) this.telemetryPanel.render(this.telemetryContainer);
+    if (this.telemetryContainer) this.dataPanel.render(this.telemetryContainer);
     if (this.orbitContainer) this.orbitPanel.render(this.orbitContainer);
     if (this.groundTrackContainer) this.groundTrackPanel.render(this.groundTrackContainer);
 
@@ -362,37 +362,62 @@ const MCC_CSS = `
   }
   .mcc-wall-panel:last-child { border-right: none; }
   .mcc-wall-center { flex: 1.3; }
+  .mcc-wall-data { background: #0C1222; flex: 0.8; }
   .mcc-wall-header {
     background: var(--wall-header-bg); color: var(--wall-header-text);
     font-size: 10px; letter-spacing: 2px; padding: 4px 10px;
     font-weight: 600;
   }
 
-  /* ── Telemetry Cards ──────────────────────────── */
-  .mcc-telemetry-grid {
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 4px; padding: 4px; overflow-y: auto;
-    max-height: calc(100% - 24px);
+  /* ── Data Panel (far-left, dark ops terminal) ── */
+  .dp-panel {
+    height: calc(100% - 24px); overflow-y: auto;
+    padding: 6px 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: #CBD5E1;
+    background: #0C1222;
   }
-  .mcc-subsystem-card {
-    background: #F8FAFC; border: 1px solid #E2E8F0;
-    padding: 4px 6px; cursor: pointer;
-    border-radius: 2px; transition: border-color 0.2s;
+  .dp-section {
+    margin-bottom: 6px;
+    border-bottom: 1px solid #1E293B;
+    padding-bottom: 4px;
   }
-  .mcc-subsystem-card:hover { border-color: var(--nasa-blue-light); }
-  .mcc-status-border-nominal { border-left: 3px solid var(--status-nominal); }
-  .mcc-status-border-advisory { border-left: 3px solid #3B82F6; }
-  .mcc-status-border-caution { border-left: 3px solid var(--status-caution); }
-  .mcc-status-border-warning { border-left: 3px solid var(--status-warning); }
-  .mcc-status-border-critical { border-left: 3px solid var(--status-critical); }
-  .mcc-status-border-failed { border-left: 3px solid var(--status-critical); background: #FEF2F2; }
-  .mcc-card-header {
-    display: flex; align-items: center; gap: 4px;
-    font-size: 9px; margin-bottom: 2px;
+  .dp-section-title {
+    font-size: 9px; font-weight: 600; letter-spacing: 1px;
+    color: #60A5FA; margin-bottom: 3px;
+    text-transform: uppercase;
   }
-  .mcc-card-name { font-weight: 700; color: var(--wall-text); letter-spacing: 1px; }
-  .mcc-card-status { margin-left: auto; font-size: 8px; color: var(--wall-text-dim); }
-  .mcc-card-gauges { display: flex; gap: 2px; justify-content: center; flex-wrap: wrap; }
+  .dp-row {
+    display: flex; justify-content: space-between;
+    padding: 1px 0; line-height: 1.5;
+  }
+  .dp-label { color: #94A3B8; }
+  .dp-value { color: #E2E8F0; font-weight: 500; }
+  .dp-highlight { color: #FDE047; font-weight: 700; }
+  .dp-go-cmd { padding: 3px 0; }
+  .dp-go-indicator {
+    display: inline-block;
+    padding: 2px 12px;
+    font-size: 11px; font-weight: 700;
+    color: #000; border-radius: 2px;
+  }
+  .dp-status-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 1px 0; cursor: pointer;
+    line-height: 1.5;
+  }
+  .dp-status-row:hover { background: rgba(255,255,255,0.03); }
+  .dp-status-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dp-status-label { color: #94A3B8; flex: 1; }
+  .dp-status-value { font-size: 9px; font-weight: 600; }
+  .dp-bar {
+    font-size: 6px; line-height: 1; letter-spacing: -0.5px;
+    margin-bottom: 3px; opacity: 0.6;
+  }
 
   /* ── Orbit Panel ──────────────────────────────── */
   .mcc-orbit-content { height: calc(100% - 24px); display: flex; flex-direction: column; }
